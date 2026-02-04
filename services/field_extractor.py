@@ -7,7 +7,7 @@ import re
 from typing import Optional, Dict, Any, List
 import logging
 
-from backend.models import Page1Fields, PartVIIIFields, PartIXFields, ExtractionResult
+from models import Page1Fields, PartVIIIFields, PartIXFields, ExtractionResult
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

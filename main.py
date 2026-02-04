@@ -11,9 +11,9 @@ import uuid
 from datetime import datetime
 import logging
 
-from backend.models import ExtractionResponse, ExtractionResult, HealthResponse
-from backend.services.pdf_processor import PDFProcessor
-from backend.services.field_extractor import FieldExtractor
+from models import ExtractionResponse, ExtractionResult, HealthResponse
+from services.pdf_processor import PDFProcessor
+from services.field_extractor import FieldExtractor
 
 # Configure logging
 logging.basicConfig(
