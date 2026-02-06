@@ -100,3 +100,134 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     timestamp: datetime = Field(default_factory=datetime.now)
+
+
+# V2 Models with Confidence Scoring
+
+class FieldWithConfidence(BaseModel):
+    """Field value with confidence score and metadata"""
+    value: Optional[str]
+    confidence: float = Field(description="Confidence score 0.0-1.0")
+    warnings: List[str] = Field(default_factory=list)
+    source: str = Field(default="unknown", description="Extraction source: table, text_pattern, ocr")
+
+
+class Page1FieldsV2(BaseModel):
+    """Page 1 fields with confidence scores"""
+    employer_identification_number: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    gross_receipts: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    total_contributions: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    total_revenue: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    grants_and_similar_amounts_paid: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    salaries_compensation_benefits: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    professional_fundraising_fees: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    total_fundraising_expenses: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    total_assets: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    total_liabilities: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    net_assets_or_fund_balances: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+
+class PartVIIIFieldsV2(BaseModel):
+    """Part VIII fields with confidence scores"""
+    # Row 1: Contributions
+    federated_campaigns: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    membership_dues: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    fundraising_events: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    related_organizations: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    government_grants: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    all_other_contributions: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    noncash_contributions: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    contributions_total: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 2: Program Service Revenue
+    program_service_revenue_total: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 3: Investment Income
+    investment_income: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 4: Tax-exempt bond income
+    tax_exempt_bond_income: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 5: Royalties
+    royalties: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 6: Rental Income
+    gross_rents_real: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    gross_rents_personal: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    rental_expenses_real: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    rental_expenses_personal: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    rental_income_real: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    rental_income_personal: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    net_rental_income: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 7: Capital Gains/Losses
+    gross_sales_securities: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    gross_sales_other: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    cost_basis_securities: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    cost_basis_other: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    gain_loss_securities: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    gain_loss_other: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    net_gain_loss: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 8: Fundraising Events
+    fundraising_gross_income: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    fundraising_8a_other: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    fundraising_direct_expenses: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    fundraising_net_income: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 9: Gaming
+    gaming_gross_income: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    gaming_direct_expenses: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    gaming_net_income: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 10: Inventory Sales
+    inventory_gross_sales: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    inventory_cost_of_goods: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    inventory_net_income: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 11: Other Revenue
+    other_revenue_total: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+    # Row 12: Total Revenue
+    total_revenue: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+
+class PartIXFieldsV2(BaseModel):
+    """Part IX fields with confidence scores"""
+    grants_domestic_organizations: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    professional_fundraising_services: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    affiliate_payments: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    total_functional_expenses_a: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    total_functional_expenses_b: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    total_functional_expenses_c: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    total_functional_expenses_d: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+    joint_costs: FieldWithConfidence = Field(default_factory=lambda: FieldWithConfidence(value=None, confidence=0.0, source="none"))
+
+
+class ExtractionResultV2(BaseModel):
+    """Enhanced extraction result with confidence scoring"""
+    filename: str
+    extraction_date: datetime = Field(default_factory=datetime.now)
+    page1: Page1FieldsV2 = Field(default_factory=Page1FieldsV2)
+    part_viii: PartVIIIFieldsV2 = Field(default_factory=PartVIIIFieldsV2)
+    part_ix: PartIXFieldsV2 = Field(default_factory=PartIXFieldsV2)
+
+    # Enhanced metadata
+    overall_confidence: float = Field(description="Overall extraction confidence 0.0-1.0")
+    pass_threshold: bool = Field(description="Whether confidence meets minimum threshold")
+    validation_report: str = Field(default="", description="Cross-validation results")
+    extraction_method: str = Field(default="pdfplumber", description="PDF extractor used")
+    form_start_page: int = Field(default=1, description="Page where Form 990 starts")
+    document_type: str = Field(default="unknown", description="Document classification")
+
+    # Optional fields
+    raw_text: Optional[str] = None
+    errors: List[str] = Field(default_factory=list)
+
+
+class ExtractionResponseV2(BaseModel):
+    """API response for v2 extraction endpoint"""
+    success: bool
+    message: str
+    data: Optional[ExtractionResultV2] = None
+    confidence: Optional[float] = None

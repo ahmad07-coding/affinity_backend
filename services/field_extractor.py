@@ -543,3 +543,144 @@ class FieldExtractor:
 
         filled = sum(1 for f in key_fields if f is not None)
         return filled / len(key_fields) if key_fields else 0.0
+
+    def extract_all_fields_v2(self, filepath: str):
+        """
+        Enhanced extraction using new infrastructure components
+        Returns ExtractionResultV2 with confidence scoring
+        """
+        from services.extractors.pdfplumber_extractor import PDFPlumberExtractor
+        from services.extractors.pdfminer_extractor import PDFMinerExtractor
+        from services.extractors.extractor_combiner import ExtractorCombiner
+        from services.document_analyzer import DocumentAnalyzer
+        from services.table_processor import TableProcessor
+        from services.field_extractors.ein_extractor import EINExtractor
+        from services.field_extractors.monetary_extractor import MonetaryExtractor
+        from services.confidence_scorer import ConfidenceScorer
+        from services.validators.cross_validator import CrossValidator
+        from models import ExtractionResultV2, Page1FieldsV2, PartVIIIFieldsV2, PartIXFieldsV2, FieldWithConfidence
+        import os
+
+        filename = os.path.basename(filepath)
+        logger.info(f"Starting enhanced extraction for {filename}")
+
+        # Step 1: Dual extraction
+        plumber = PDFPlumberExtractor()
+        pdfminer = PDFMinerExtractor()
+        combiner = ExtractorCombiner()
+        extraction = combiner.extract_with_best_method(filepath, [plumber, pdfminer])
+
+        # Step 2: Document analysis
+        analyzer = DocumentAnalyzer()
+        form_start_page = analyzer.detect_form_990_start(extraction.pages)
+        page_metadata = [analyzer.analyze_page(p) for p in extraction.pages]
+        avg_ocr_quality = sum(p.ocr_quality_score for p in page_metadata) / len(page_metadata) if page_metadata else 0.5
+
+        # Step 3: Table normalization
+        table_processor = TableProcessor()
+        normalized_tables = [table_processor.normalize_table(t, t.page_number) for t in extraction.tables if hasattr(t, 'page_number')]
+
+        # Step 4: Extract Form 990 text only
+        form_990_pages = extraction.pages[form_start_page-1:]
+        form_990_text = "\n".join([p['text'] for p in form_990_pages])
+
+        # Step 5: Field extraction
+        ein_extractor = EINExtractor()
+        monetary_extractor = MonetaryExtractor()
+
+        ein_result = ein_extractor.extract(form_990_text, normalized_tables, page_metadata)
+
+        # Extract key fields with new extractors
+        page1_results = {
+            'gross_receipts': monetary_extractor.extract_field('gross_receipts', 'Gross receipts', '', form_990_text, normalized_tables, ''),
+            'total_contributions': monetary_extractor.extract_field('total_contributions', '8', 'Current Year', form_990_text, normalized_tables, 'Part I'),
+            'total_revenue': monetary_extractor.extract_field('total_revenue', '12', 'Current Year', form_990_text, normalized_tables, 'Part I'),
+            'total_assets': monetary_extractor.extract_field('total_assets', '20', 'End of Year', form_990_text, normalized_tables, 'Part I'),
+            'total_liabilities': monetary_extractor.extract_field('total_liabilities', '21', 'End of Year', form_990_text, normalized_tables, 'Part I'),
+            'net_assets_or_fund_balances': monetary_extractor.extract_field('net_assets_or_fund_balances', '22', 'End of Year', form_990_text, normalized_tables, 'Part I'),
+        }
+
+        part8_results = {
+            'contributions_total': monetary_extractor.extract_field('contributions_total', '1h', '(A)', form_990_text, normalized_tables, 'Part VIII'),
+            'program_service_revenue_total': monetary_extractor.extract_field('program_service_revenue_total', '2g', '(A)', form_990_text, normalized_tables, 'Part VIII'),
+            'investment_income': monetary_extractor.extract_field('investment_income', '3', '(A)', form_990_text, normalized_tables, 'Part VIII'),
+            'total_revenue': monetary_extractor.extract_field('total_revenue', '12', '(A)', form_990_text, normalized_tables, 'Part VIII'),
+        }
+
+        part9_results = {
+            'grants_domestic_organizations': monetary_extractor.extract_field('grants_domestic_organizations', '1', '(A)', form_990_text, normalized_tables, 'Part IX'),
+            'professional_fundraising_services': monetary_extractor.extract_field('professional_fundraising_services', '11e', '(A)', form_990_text, normalized_tables, 'Part IX'),
+            'affiliate_payments': monetary_extractor.extract_field('affiliate_payments', '21', '(A)', form_990_text, normalized_tables, 'Part IX'),
+            'total_functional_expenses_a': monetary_extractor.extract_field('total_functional_expenses_a', '25', '(A)', form_990_text, normalized_tables, 'Part IX'),
+        }
+
+        # Step 6: Confidence scoring
+        scorer = ConfidenceScorer()
+        field_confidences = {}
+
+        field_confidences['employer_identification_number'] = scorer.calculate_field_confidence(
+            'employer_identification_number', ein_result.value, ein_result.source,
+            1.0 if ein_result.is_valid else 0.5, 1.0, avg_ocr_quality, ein_result.validation_errors
+        )
+
+        for field_name, result in page1_results.items():
+            field_confidences[field_name] = scorer.calculate_field_confidence(
+                field_name, result.value, result.source, 1.0 if result.is_valid else 0.5, 1.0, avg_ocr_quality, result.validation_errors
+            )
+
+        # Step 7: Cross-validation
+        validator = CrossValidator()
+        page1_dict = {k: v.value for k, v in page1_results.items()}
+        part8_dict = {k: v.value for k, v in part8_results.items()}
+        part9_dict = {k: v.value for k, v in part9_results.items()}
+        validation_result = validator.validate_all(page1_dict, part8_dict, part9_dict)
+
+        # Step 8: Overall confidence
+        doc_confidence = scorer.calculate_overall_confidence(field_confidences, validation_result)
+
+        # Step 9: Build V2 result
+        def make_field(result):
+            return FieldWithConfidence(value=result.value, confidence=result.confidence, warnings=result.validation_errors, source=result.source)
+
+        page1_v2 = Page1FieldsV2(
+            employer_identification_number=make_field(ein_result),
+            gross_receipts=make_field(page1_results['gross_receipts']),
+            total_contributions=make_field(page1_results['total_contributions']),
+            total_revenue=make_field(page1_results['total_revenue']),
+            total_assets=make_field(page1_results['total_assets']),
+            total_liabilities=make_field(page1_results['total_liabilities']),
+            net_assets_or_fund_balances=make_field(page1_results['net_assets_or_fund_balances']),
+        )
+
+        part8_v2 = PartVIIIFieldsV2(
+            contributions_total=make_field(part8_results['contributions_total']),
+            program_service_revenue_total=make_field(part8_results['program_service_revenue_total']),
+            investment_income=make_field(part8_results['investment_income']),
+            total_revenue=make_field(part8_results['total_revenue']),
+        )
+
+        part9_v2 = PartIXFieldsV2(
+            grants_domestic_organizations=make_field(part9_results['grants_domestic_organizations']),
+            professional_fundraising_services=make_field(part9_results['professional_fundraising_services']),
+            affiliate_payments=make_field(part9_results['affiliate_payments']),
+            total_functional_expenses_a=make_field(part9_results['total_functional_expenses_a']),
+        )
+
+        validation_report = f"Validation: {len(validation_result.errors)} errors, {len(validation_result.warnings)} warnings"
+        if validation_result.errors:
+            validation_report += "\nErrors: " + "; ".join(validation_result.errors)
+
+        return ExtractionResultV2(
+            filename=filename,
+            page1=page1_v2,
+            part_viii=part8_v2,
+            part_ix=part9_v2,
+            overall_confidence=doc_confidence.overall_score,
+            pass_threshold=doc_confidence.pass_threshold,
+            validation_report=validation_report,
+            extraction_method=extraction.extractor_name,
+            form_start_page=form_start_page,
+            document_type=page_metadata[0].layout_type if page_metadata else "unknown",
+            raw_text=form_990_text[:5000] if len(form_990_text) > 5000 else form_990_text,
+            errors=doc_confidence.critical_failures
+        )

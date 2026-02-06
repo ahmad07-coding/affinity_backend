@@ -11,9 +11,10 @@ import uuid
 from datetime import datetime
 import logging
 
-from models import ExtractionResponse, ExtractionResult, HealthResponse
+from models import ExtractionResponse, ExtractionResult, HealthResponse, ExtractionResponseV2
 from services.pdf_processor import PDFProcessor
 from services.field_extractor import FieldExtractor
+import aiofiles
 
 # Configure logging
 logging.basicConfig(
@@ -140,6 +141,84 @@ async def extract_form_990(
         if os.path.exists(temp_path):
             try:
                 os.remove(temp_path)
+            except Exception as e:
+                logger.warning(f"Failed to remove temp file: {e}")
+
+
+@app.post("/api/extract/v2", response_model=ExtractionResponseV2)
+async def extract_form_990_v2(
+    file: UploadFile = File(...),
+    confidence_threshold: float = 0.7,
+    fail_fast: bool = True
+):
+    """
+    Enhanced Form 990 extraction with confidence scoring (V2)
+
+    Features:
+    - Dual PDF extraction (pdfplumber + pdfminer.six)
+    - Form 990 page detection (skips Form 8868, cover pages)
+    - OCR artifact cleaning
+    - Per-field confidence scores
+    - Cross-field validation
+    - Fail-fast with configurable threshold
+
+    Args:
+        file: PDF file to process
+        confidence_threshold: Minimum confidence score (0.0-1.0, default 0.7)
+        fail_fast: If True, reject extractions below threshold
+
+    Returns:
+        ExtractionResponseV2 with confidence scores and validation
+    """
+    if not file.filename.lower().endswith('.pdf'):
+        return ExtractionResponseV2(
+            success=False,
+            message="Only PDF files are supported",
+            confidence=0.0
+        )
+
+    # Save uploaded file
+    filepath = os.path.join(UPLOAD_DIR, file.filename)
+    async with aiofiles.open(filepath, 'wb') as f:
+        content = await file.read()
+        await f.write(content)
+
+    try:
+        # Use hybrid extraction (V2 infrastructure + V1 field extraction)
+        from services.field_extractor_hybrid import HybridFieldExtractor
+        extractor = HybridFieldExtractor()
+        result = extractor.extract_all_fields_v2_hybrid(filepath)
+
+        # Check fail-fast threshold
+        if fail_fast and result.overall_confidence < confidence_threshold:
+            return ExtractionResponseV2(
+                success=False,
+                message=f"Extraction confidence ({result.overall_confidence:.2f}) below threshold ({confidence_threshold}). Manual review required.",
+                data=result,
+                confidence=result.overall_confidence
+            )
+
+        logger.info(f"Successfully extracted {file.filename} with confidence {result.overall_confidence:.2f}")
+
+        return ExtractionResponseV2(
+            success=True,
+            message=f"Extraction completed successfully with confidence {result.overall_confidence:.2f}",
+            data=result,
+            confidence=result.overall_confidence
+        )
+
+    except Exception as e:
+        logger.error(f"V2 Extraction error for {file.filename}: {e}")
+        return ExtractionResponseV2(
+            success=False,
+            message=f"Extraction failed: {str(e)}",
+            confidence=0.0
+        )
+    finally:
+        # Clean up temp file
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
             except Exception as e:
                 logger.warning(f"Failed to remove temp file: {e}")
 
