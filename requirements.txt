@@ -7,3 +7,5 @@ python-multipart>=0.0.9
 pydantic>=2.6.1
 Pillow
 aiofiles>=23.2.1
+pdfminer.six>=20231228
+numpy>=1.24.0
