@@ -99,9 +99,9 @@ class MonetaryExtractor(BaseFieldExtractor):
         if match:
             line_text = match.group(0)
 
-            # Find all monetary amounts in line
-            amounts = re.findall(r'([\d,]{4,}(?:\.\d{2})?)', line_text)
-            valid_amounts = [a for a in amounts if self._is_valid_monetary_amount(a)]
+            # Find all monetary amounts in line (handles IRS trailing dot format like "767,640.")
+            amounts = re.findall(r'([\d,]{4,}(?:\.\d{0,2})?)', line_text)
+            valid_amounts = [a.rstrip('.') for a in amounts if self._is_valid_monetary_amount(a.rstrip('.'))]
 
             if valid_amounts:
                 # For "Current Year" or single column, take last amount

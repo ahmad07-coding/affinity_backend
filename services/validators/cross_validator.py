@@ -243,8 +243,8 @@ class CrossValidator:
             return None
 
         try:
-            # Remove commas and parse
-            clean = value.replace(',', '')
+            # Remove commas and trailing dot, then parse
+            clean = value.replace(',', '').rstrip('.')
             return float(clean)
         except (ValueError, AttributeError):
             return None
