@@ -158,12 +158,13 @@ class TableProcessor:
     def _normalize_decimal_format(self, text: str) -> str:
         """Normalize decimal formats in monetary values"""
         # Match patterns like "384,948." (trailing period, no decimal places)
-        # Convert to "384,948.00"
+        # Strip trailing dot: "384,948." → "384,948"
+        # IRS trailing dot means "no cents" - just remove it
         pattern = r'\b(\d{1,3}(?:,\d{3})*)\.\s*$'
         match = re.search(pattern, text)
         if match:
             number = match.group(1)
-            text = re.sub(pattern, f'{number}.00', text)
+            text = re.sub(pattern, number, text)
 
         return text
 

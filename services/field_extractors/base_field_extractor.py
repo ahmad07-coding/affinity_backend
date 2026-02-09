@@ -146,8 +146,8 @@ class BaseFieldExtractor(ABC):
         # Remove extra whitespace
         value = value.strip()
 
-        # Handle decimal formats: "384,948." → "384,948.00"
-        if re.match(r'^\d{1,3}(,\d{3})*\.$', value):
-            value = value + '00'
+        # Strip trailing dot: "384,948." → "384,948"
+        # IRS trailing dot means "no cents" - just remove it
+        value = value.rstrip('.')
 
         return value

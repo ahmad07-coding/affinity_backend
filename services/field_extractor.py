@@ -128,17 +128,17 @@ class FieldExtractor:
         With layout=True, the $ and amount may be separated by whitespace.
         """
         # Pattern 1: "Gross receipts $" followed by amount (flexible whitespace)
-        match = re.search(r'[Gg]ross\s+receipts\s*\$\s*([\d,]+(?:\.\d{2})?)', text)
+        match = re.search(r'[Gg]ross\s+receipts\s*\$\s*([\d,]+(?:\.\d{0,2})?)', text)
         if match:
-            amount = match.group(1)
+            amount = match.group(1).rstrip('.')
             if self._is_valid_monetary_amount(amount):
                 logger.info(f"Found Gross Receipts: {amount}")
                 return amount
 
         # Pattern 2: "Gross receipts" anywhere on line with $ and amount
-        match = re.search(r'[Gg]ross\s+receipts[^\n]*?\$\s*([\d,]+(?:\.\d{2})?)', text)
+        match = re.search(r'[Gg]ross\s+receipts[^\n]*?\$\s*([\d,]+(?:\.\d{0,2})?)', text)
         if match:
-            amount = match.group(1)
+            amount = match.group(1).rstrip('.')
             if self._is_valid_monetary_amount(amount):
                 logger.info(f"Found Gross Receipts (alt): {amount}")
                 return amount
@@ -147,8 +147,8 @@ class FieldExtractor:
         match = re.search(r'[Gg]ross\s+receipts[^\n]*', text)
         if match:
             line = match.group(0)
-            amounts = re.findall(r'([\d,]{4,}(?:\.\d{2})?)', line)
-            valid = [a for a in amounts if self._is_valid_monetary_amount(a)]
+            amounts = re.findall(r'([\d,]{4,}(?:\.\d{0,2})?)', line)
+            valid = [a.rstrip('.') for a in amounts if self._is_valid_monetary_amount(a.rstrip('.'))]
             if valid:
                 logger.info(f"Found Gross Receipts (fallback): {valid[-1]}")
                 return valid[-1]
@@ -233,7 +233,8 @@ class FieldExtractor:
         return True
     
     # Regex that captures normal amounts (4+ digit chars) AND standalone zeros
-    AMOUNT_RE = r'([\d,]{4,}(?:\.\d{2})?|\b0(?:\.00)?\b)'
+    # \d{0,2} allows trailing dot with 0, 1, or 2 decimal digits (handles IRS "767,640." format)
+    AMOUNT_RE = r'([\d,]{4,}(?:\.\d{0,2})?|\b0(?:\.\d{0,2})?\b)'
 
     # How many lines ahead to check when amounts aren't on the matched line
     LOOKAHEAD_LINES = 3
@@ -245,7 +246,8 @@ class FieldExtractor:
     def _find_amounts_in_text(self, text_block: str) -> List[str]:
         """Find all valid monetary amounts in a text block (handles zeros too)."""
         amounts = re.findall(self.AMOUNT_RE, text_block)
-        return [a for a in amounts if self._is_valid_monetary_amount(a)]
+        # Strip trailing dots from IRS format amounts (e.g., "767,640." → "767,640")
+        return [a.rstrip('.') for a in amounts if self._is_valid_monetary_amount(a.rstrip('.'))]
 
     def _get_subsequent_lines(self, text: str, match_end: int, count: int = 3) -> List[str]:
         """Get the next N lines after a regex match position."""
